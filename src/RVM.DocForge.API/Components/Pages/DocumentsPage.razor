@@ -1,0 +1,91 @@
+@page "/documents"
+@using RVM.DocForge.Domain.Entities
+@using RVM.DocForge.Domain.Interfaces
+@inject IDocumentationProjectRepository ProjectRepo
+@inject IGeneratedDocumentRepository DocumentRepo
+
+<h1>Documents</h1>
+
+@if (!_loaded)
+{
+    <div class="loading">Loading...</div>
+}
+else
+{
+    <div class="filter-bar">
+        <select class="input-sm" @onchange="OnProjectSelected">
+            <option value="">-- Select a project --</option>
+            @foreach (var project in _projects)
+            {
+                <option value="@project.Id">@project.Name</option>
+            }
+        </select>
+    </div>
+
+    @if (_selectedProjectId == Guid.Empty)
+    {
+        <div class="empty-state">Select a project to view its generated documents.</div>
+    }
+    else if (_loadingDocuments)
+    {
+        <div class="loading">Loading documents...</div>
+    }
+    else if (_documents.Count == 0)
+    {
+        <div class="empty-state">No documents generated for this project yet.</div>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Format</th>
+                    <th>Generated At</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doc in _documents.OrderByDescending(d => d.GeneratedAt))
+                {
+                    <tr>
+                        <td>@doc.Title</td>
+                        <td><span class="badge">@doc.Type</span></td>
+                        <td>@doc.Format</td>
+                        <td>@doc.GeneratedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool _loaded;
+    private bool _loadingDocuments;
+    private List<DocumentationProject> _projects = [];
+    private List<GeneratedDocument> _documents = [];
+    private Guid _selectedProjectId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await ProjectRepo.GetAllAsync();
+        _loaded = true;
+    }
+
+    private async Task OnProjectSelected(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var projectId))
+        {
+            _selectedProjectId = Guid.Empty;
+            _documents = [];
+            return;
+        }
+
+        _selectedProjectId = projectId;
+        _loadingDocuments = true;
+        _documents = await DocumentRepo.GetByProjectIdAsync(projectId);
+        _loadingDocuments = false;
+    }
+}

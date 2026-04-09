@@ -1,0 +1,122 @@
+@page "/projects"
+@using RVM.DocForge.Domain.Entities
+@using RVM.DocForge.Domain.Interfaces
+@inject IDocumentationProjectRepository ProjectRepo
+@inject IProjectSnapshotRepository SnapshotRepo
+
+<h1>Projects</h1>
+
+@if (!_loaded)
+{
+    <div class="loading">Loading projects...</div>
+}
+else
+{
+    @if (_projects.Count == 0)
+    {
+        <div class="empty-state">No projects found. Register a repository via the API to begin analysis.</div>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Repository Path</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Analyzed</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var project in _projects.OrderByDescending(p => p.CreatedAt))
+                {
+                    <tr>
+                        <td>@project.Name</td>
+                        <td>@project.RepositoryPath</td>
+                        <td><span class="badge">@project.Status</span></td>
+                        <td>@project.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        <td>@(project.LastAnalyzedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
+                        <td>
+                            <button class="btn-sm" @onclick="() => SelectProject(project)">
+                                @(_selectedProject?.Id == project.Id ? "Hide" : "Snapshots")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (_selectedProject is not null)
+    {
+        <div class="detail-card">
+            <h2>Snapshots for @_selectedProject.Name</h2>
+
+            @if (_loadingSnapshots)
+            {
+                <div class="loading">Loading snapshots...</div>
+            }
+            else if (_snapshots.Count == 0)
+            {
+                <div class="empty-state">No snapshots yet. Run an analysis to generate the first snapshot.</div>
+            }
+            else
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Analyzed At</th>
+                            <th>Projects</th>
+                            <th>Classes</th>
+                            <th>Endpoints</th>
+                            <th>Entities</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var snapshot in _snapshots.OrderByDescending(s => s.AnalyzedAt))
+                        {
+                            <tr>
+                                <td>@snapshot.AnalyzedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@snapshot.ProjectCount</td>
+                                <td>@snapshot.TotalClasses</td>
+                                <td>@snapshot.TotalEndpoints</td>
+                                <td>@snapshot.TotalEntities</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _loaded;
+    private bool _loadingSnapshots;
+    private List<DocumentationProject> _projects = [];
+    private DocumentationProject? _selectedProject;
+    private List<ProjectSnapshot> _snapshots = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await ProjectRepo.GetAllAsync();
+        _loaded = true;
+    }
+
+    private async Task SelectProject(DocumentationProject project)
+    {
+        if (_selectedProject?.Id == project.Id)
+        {
+            _selectedProject = null;
+            _snapshots = [];
+            return;
+        }
+
+        _selectedProject = project;
+        _loadingSnapshots = true;
+        _snapshots = await SnapshotRepo.GetByProjectIdAsync(project.Id);
+        _loadingSnapshots = false;
+    }
+}

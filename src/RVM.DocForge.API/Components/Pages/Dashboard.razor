@@ -1,0 +1,99 @@
+@page "/"
+@using RVM.DocForge.Domain.Entities
+@using RVM.DocForge.Domain.Interfaces
+@inject IDocumentationProjectRepository ProjectRepo
+@inject IProjectSnapshotRepository SnapshotRepo
+@inject IGeneratedDocumentRepository DocumentRepo
+
+<h1>Dashboard</h1>
+
+@if (!_loaded)
+{
+    <div class="loading">Loading dashboard...</div>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">@_totalProjects</div>
+            <div class="stat-label">Projects</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@_totalSnapshots</div>
+            <div class="stat-label">Snapshots</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@_totalDocuments</div>
+            <div class="stat-label">Documents</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@(_latestAnalysis?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</div>
+            <div class="stat-label">Latest Analysis</div>
+        </div>
+    </div>
+
+    <h2>Recent Projects</h2>
+
+    @if (_projects.Count == 0)
+    {
+        <div class="empty-state">No projects found. Create one via the API to get started.</div>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Last Analyzed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var project in _projects.OrderByDescending(p => p.LastAnalyzedAt ?? p.CreatedAt).Take(10))
+                {
+                    <tr>
+                        <td>@project.Name</td>
+                        <td><span class="badge">@project.Status</span></td>
+                        <td>@(project.LastAnalyzedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool _loaded;
+    private List<DocumentationProject> _projects = [];
+    private int _totalProjects;
+    private int _totalSnapshots;
+    private int _totalDocuments;
+    private DateTime? _latestAnalysis;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await ProjectRepo.GetAllAsync();
+        _totalProjects = _projects.Count;
+
+        var allSnapshots = new List<ProjectSnapshot>();
+        var allDocuments = new List<GeneratedDocument>();
+
+        foreach (var project in _projects)
+        {
+            var snapshots = await SnapshotRepo.GetByProjectIdAsync(project.Id);
+            allSnapshots.AddRange(snapshots);
+
+            var documents = await DocumentRepo.GetByProjectIdAsync(project.Id);
+            allDocuments.AddRange(documents);
+        }
+
+        _totalSnapshots = allSnapshots.Count;
+        _totalDocuments = allDocuments.Count;
+        _latestAnalysis = allSnapshots
+            .OrderByDescending(s => s.AnalyzedAt)
+            .Select(s => (DateTime?)s.AnalyzedAt)
+            .FirstOrDefault();
+
+        _loaded = true;
+    }
+}

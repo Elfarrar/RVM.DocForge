@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>RVM.DocForge</h2>
+            <span class="subtitle">Documentation Generator</span>
+        </div>
+        <ul class="nav-list">
+            <li><NavLink href="" Match="NavLinkMatch.All">Dashboard</NavLink></li>
+            <li><NavLink href="projects">Projects</NavLink></li>
+            <li><NavLink href="documents">Documents</NavLink></li>
+        </ul>
+    </nav>
+    <main class="main-content">
+        @Body
+    </main>
+</div>

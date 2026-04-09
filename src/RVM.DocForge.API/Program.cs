@@ -28,6 +28,8 @@ try
     // Controllers + OpenAPI
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
+    builder.Services.AddRazorComponents()
+        .AddInteractiveServerComponents();
 
     // Infrastructure (DbContext + Repositories)
     builder.Services.AddInfrastructure(builder.Configuration);
@@ -105,6 +107,7 @@ try
     // Middleware pipeline
     app.UseForwardedHeaders();
     app.UseStaticFiles();
+    app.UseAntiforgery();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseRateLimiter();
@@ -113,6 +116,8 @@ try
 
     // Routes
     app.MapControllers();
+    app.MapRazorComponents<RVM.DocForge.API.Components.App>()
+        .AddInteractiveServerRenderMode();
     app.MapHealthChecks("/health").AllowAnonymous();
 
     app.Run();
