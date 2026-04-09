@@ -59,13 +59,20 @@ try
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            RateLimitPartition.GetFixedWindowLimiter(
+        {
+            var path = context.Request.Path.Value ?? "";
+            if (path.StartsWith("/_blazor") || path.StartsWith("/_framework") ||
+                path == "/health" || path.StartsWith("/css") || path.StartsWith("/js"))
+                return RateLimitPartition.GetNoLimiter("internal");
+
+            return RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 60,
+                    PermitLimit = 120,
                     Window = TimeSpan.FromMinutes(1)
-                }));
+                });
+        });
 
         options.AddPolicy("api-key", context =>
             RateLimitPartition.GetFixedWindowLimiter(
