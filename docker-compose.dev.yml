@@ -1,0 +1,29 @@
+services:
+  rvmdocforge-api:
+    build:
+      context: .
+      dockerfile: src/RVM.DocForge.API/Dockerfile
+    container_name: rvmdocforge-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=rvmtech-db;Database=rvmdocforge;Username=rvmtech;Password=${POSTGRES_PASSWORD}
+      - DataProtection__Directory=/app/data/dataprotection
+      - ApiKeys__Keys__0__Key=${API_KEY_0}
+      - ApiKeys__Keys__0__AppId=${API_APP_ID_0}
+      - ApiKeys__Keys__0__Name=${API_APP_NAME_0}
+      - App__PathBase=/docforge
+    volumes:
+      - app-data:/app/data
+      - repos:/repos
+    networks:
+      - rvmtech
+
+volumes:
+  app-data:
+  repos:
+
+networks:
+  rvmtech:
+    external: true

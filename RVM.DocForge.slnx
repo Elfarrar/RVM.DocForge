@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RVM.DocForge.API/RVM.DocForge.API.csproj" />
+    <Project Path="src/RVM.DocForge.Domain/RVM.DocForge.Domain.csproj" />
+    <Project Path="src/RVM.DocForge.Infrastructure/RVM.DocForge.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/RVM.DocForge.Test/RVM.DocForge.Test.csproj" />
+  </Folder>
+</Solution>
