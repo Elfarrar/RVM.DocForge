@@ -87,6 +87,7 @@ try
     builder.Services.AddAuthorization();
 
     // Application Services
+    builder.Services.AddScoped<GitCloneService>();
     builder.Services.AddScoped<RepositoryAnalyzerService>();
     builder.Services.AddScoped<DocumentationOrchestrator>();
 

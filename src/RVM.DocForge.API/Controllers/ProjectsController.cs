@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RVM.DocForge.API.DTOs;
+using RVM.DocForge.API.Services;
 using RVM.DocForge.Domain.Entities;
 using RVM.DocForge.Domain.Interfaces;
 
@@ -11,6 +12,7 @@ namespace RVM.DocForge.API.Controllers;
 [Authorize]
 public class ProjectsController(
     IDocumentationProjectRepository projectRepo,
+    GitCloneService cloneService,
     ILogger<ProjectsController> logger) : ControllerBase
 {
     [HttpGet]
@@ -33,10 +35,22 @@ public class ProjectsController(
     [HttpPost]
     public async Task<ActionResult<ProjectResponse>> Create(CreateProjectRequest request, CancellationToken ct)
     {
+        var repositoryPath = request.RepositoryPath;
+
+        // If no local path but a Git URL is provided, clone the repository
+        if (string.IsNullOrWhiteSpace(repositoryPath) && !string.IsNullOrWhiteSpace(request.GitRemoteUrl))
+        {
+            repositoryPath = cloneService.Clone(request.GitRemoteUrl);
+            logger.LogInformation("Cloned {Url} to {Path}", request.GitRemoteUrl, repositoryPath);
+        }
+
+        if (string.IsNullOrWhiteSpace(repositoryPath))
+            return BadRequest("Either RepositoryPath or GitRemoteUrl is required.");
+
         var project = new DocumentationProject
         {
             Name = request.Name,
-            RepositoryPath = request.RepositoryPath,
+            RepositoryPath = repositoryPath,
             SolutionFile = request.SolutionFile,
             Description = request.Description,
             GitRemoteUrl = request.GitRemoteUrl,

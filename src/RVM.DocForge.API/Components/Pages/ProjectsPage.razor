@@ -1,10 +1,64 @@
 @page "/projects"
+@using RVM.DocForge.API.Services
 @using RVM.DocForge.Domain.Entities
 @using RVM.DocForge.Domain.Interfaces
 @inject IDocumentationProjectRepository ProjectRepo
 @inject IProjectSnapshotRepository SnapshotRepo
+@inject GitCloneService CloneService
 
 <h1>Projects</h1>
+
+<div class="toolbar">
+    <button class="btn btn-primary" @onclick="ToggleCreateForm">+ New Project</button>
+</div>
+
+@if (_showForm)
+{
+    <div class="form-card">
+        <h3>New Project</h3>
+        <div class="form-group">
+            <label>Name</label>
+            <input class="form-input" @bind="_newName" />
+        </div>
+
+        <div class="source-toggle">
+            <button class="toggle-btn @(_useUrl ? "" : "active")" @onclick="() => _useUrl = false">Local Path</button>
+            <button class="toggle-btn @(_useUrl ? "active" : "")" @onclick="() => _useUrl = true">Git Repository</button>
+        </div>
+
+        @if (_useUrl)
+        {
+            <div class="form-group">
+                <label>Git Repository URL</label>
+                <input class="form-input" @bind="_newGitUrl" placeholder="https://github.com/user/repo.git" />
+            </div>
+        }
+        else
+        {
+            <div class="form-group">
+                <label>Repository Path</label>
+                <input class="form-input" @bind="_newRepoPath" placeholder="C:\path\to\repo" />
+            </div>
+        }
+
+        <div class="form-group">
+            <label>Description (optional)</label>
+            <input class="form-input" @bind="_newDescription" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(_formError))
+        {
+            <p class="error">@_formError</p>
+        }
+
+        <div class="form-actions">
+            <button class="btn btn-primary" @onclick="CreateProjectAsync" disabled="@_creating">
+                @(_creating ? (_useUrl ? "Cloning..." : "Creating...") : "Create")
+            </button>
+            <button class="btn btn-secondary" @onclick="ToggleCreateForm">Cancel</button>
+        </div>
+    </div>
+}
 
 @if (!_loaded)
 {
@@ -14,7 +68,7 @@ else
 {
     @if (_projects.Count == 0)
     {
-        <div class="empty-state">No projects found. Register a repository via the API to begin analysis.</div>
+        <div class="empty-state">No projects found. Create one above or register via the API.</div>
     }
     else
     {
@@ -22,7 +76,7 @@ else
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Repository Path</th>
+                    <th>Source</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th>Last Analyzed</th>
@@ -34,7 +88,16 @@ else
                 {
                     <tr>
                         <td>@project.Name</td>
-                        <td>@project.RepositoryPath</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(project.GitRemoteUrl))
+                            {
+                                <span class="badge">Git</span>
+                            }
+                            else
+                            {
+                                <span class="badge">Local</span>
+                            }
+                        </td>
                         <td><span class="badge">@project.Status</span></td>
                         <td>@project.CreatedAt.ToString("yyyy-MM-dd")</td>
                         <td>@(project.LastAnalyzedAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
@@ -99,10 +162,87 @@ else
     private DocumentationProject? _selectedProject;
     private List<ProjectSnapshot> _snapshots = [];
 
+    // Create form
+    private bool _showForm;
+    private bool _useUrl;
+    private bool _creating;
+    private string _newName = "";
+    private string _newRepoPath = "";
+    private string _newGitUrl = "";
+    private string _newDescription = "";
+    private string? _formError;
+
     protected override async Task OnInitializedAsync()
     {
         _projects = await ProjectRepo.GetAllAsync();
         _loaded = true;
+    }
+
+    private void ToggleCreateForm()
+    {
+        _showForm = !_showForm;
+        _formError = null;
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName))
+        {
+            _formError = "Name is required.";
+            return;
+        }
+
+        _creating = true;
+        _formError = null;
+        StateHasChanged();
+
+        try
+        {
+            string repoPath;
+
+            if (_useUrl)
+            {
+                if (string.IsNullOrWhiteSpace(_newGitUrl))
+                {
+                    _formError = "Git URL is required.";
+                    return;
+                }
+                repoPath = CloneService.Clone(_newGitUrl);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(_newRepoPath))
+                {
+                    _formError = "Repository path is required.";
+                    return;
+                }
+                repoPath = _newRepoPath;
+            }
+
+            var project = new DocumentationProject
+            {
+                Name = _newName,
+                RepositoryPath = repoPath,
+                GitRemoteUrl = _useUrl ? _newGitUrl : null,
+                Description = string.IsNullOrWhiteSpace(_newDescription) ? null : _newDescription
+            };
+
+            await ProjectRepo.AddAsync(project);
+            _projects = await ProjectRepo.GetAllAsync();
+            _showForm = false;
+            _newName = "";
+            _newRepoPath = "";
+            _newGitUrl = "";
+            _newDescription = "";
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+        finally
+        {
+            _creating = false;
+        }
     }
 
     private async Task SelectProject(DocumentationProject project)

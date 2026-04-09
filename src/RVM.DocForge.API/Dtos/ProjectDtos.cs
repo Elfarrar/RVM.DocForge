@@ -4,7 +4,7 @@ namespace RVM.DocForge.API.DTOs;
 
 public record CreateProjectRequest(
     string Name,
-    string RepositoryPath,
+    string? RepositoryPath,
     string? SolutionFile,
     string? Description,
     string? GitRemoteUrl);
