@@ -96,7 +96,7 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<DocForgeDbContext>();
-        await db.Database.MigrateAsync();
+        await db.Database.EnsureCreatedAsync();
     }
 
     // PathBase (behind reverse proxy)
