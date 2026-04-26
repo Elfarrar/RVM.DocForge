@@ -8,6 +8,7 @@ using RVM.DocForge.API.Middleware;
 using RVM.DocForge.API.Services;
 using RVM.DocForge.Infrastructure;
 using RVM.DocForge.Infrastructure.Data;
+using RVM.Common.Security;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -121,6 +122,7 @@ try
 
     // Middleware pipeline
     app.UseForwardedHeaders();
+    app.UseSecurityHeaders();
     app.UseStaticFiles();
     app.UseAntiforgery();
     app.UseMiddleware<CorrelationIdMiddleware>();
