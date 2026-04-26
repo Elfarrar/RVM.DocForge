@@ -7,6 +7,7 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY nuget.config .
 COPY ["src/RVM.DocForge.API/RVM.DocForge.API.csproj", "src/RVM.DocForge.API/"]
 COPY ["src/RVM.DocForge.Domain/RVM.DocForge.Domain.csproj", "src/RVM.DocForge.Domain/"]
 COPY ["src/RVM.DocForge.Infrastructure/RVM.DocForge.Infrastructure.csproj", "src/RVM.DocForge.Infrastructure/"]
