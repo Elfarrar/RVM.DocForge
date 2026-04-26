@@ -122,6 +122,12 @@ try
 
     // Middleware pipeline
     app.UseForwardedHeaders();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
     app.UseSecurityHeaders();
     app.UseStaticFiles();
     app.UseAntiforgery();
